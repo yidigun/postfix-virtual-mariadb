@@ -1,0 +1,73 @@
+# /etc/postfix/main.cf
+#  for virtual mail server
+#  generated from /etc/postfix/mariadb.template/main.cf
+
+myhostname    = ::POSTFIX_MYHOSTNAME::
+myorigin      = ::POSTFIX_MYORIGIN::
+mydestination = $myhostname, ::POSTFIX_MYORIGIN::, ::POSTFIX_MYHOSTNAME_SHORT::,
+                localhost.localdomain, localhost
+mynetworks    = ::POSTFIX_MYNETWORKS::, 127.0.0.0/8, [::ffff:127.0.0.0]/104, [::1]/128
+
+smtpd_banner        = $myhostname ESMTP $mail_name (Ubuntu)
+biff                = no
+append_dot_mydomain = no
+readme_directory    = no
+
+# See http://www.postfix.org/COMPATIBILITY_README.html -- default to 3.6 on
+# fresh installs.
+compatibility_level = 3.6
+
+smtpd_relay_restrictions = permit_mynetworks
+                           permit_sasl_authenticated
+                           defer_unauth_destination
+
+mailbox_size_limit = 0
+recipient_delimiter = +
+inet_interfaces = all
+inet_protocols = all
+
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+relayhost = 
+
+# mariadb configurations
+relay_domains =
+  proxy:mysql:/etc/postfix/mariadb/relay_domains.cf
+transport_maps =
+  proxy:mysql:/etc/postfix/mariadb/transport_maps.cf
+
+virtual_mailbox_domains =
+  proxy:mysql:/etc/postfix/mariadb/virtual_domains_maps.cf
+virtual_alias_maps =
+  proxy:mysql:/etc/postfix/mariadb/virtual_alias_maps.cf,
+  proxy:mysql:/etc/postfix/mariadb/virtual_alias_domain_maps.cf,
+  proxy:mysql:/etc/postfix/mariadb/virtual_alias_domain_catchall_maps.cf
+virtual_mailbox_maps =
+  proxy:mysql:/etc/postfix/mariadb/virtual_mailbox_maps.cf,
+  proxy:mysql:/etc/postfix/mariadb/virtual_alias_domain_mailbox_maps.cf
+#virtual_mailbox_limit_maps =
+#  proxy:mysql:/etc/postfix/mariadb/virtual_mailbox_limit_maps.cf
+
+virtual_mailbox_base = /var/mail/vmail
+maillog_file         = /dev/stdout
+
+# TLS parameters
+#smtpd_tls_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+#smtpd_tls_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+#smtpd_tls_security_level=may
+
+#smtp_tls_CApath=/etc/ssl/certs
+#smtp_tls_security_level=may
+#smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+#smtpd_sasl_path = private/auth
+#smtpd_sasl_type = dovecot
+#smtpd_sasl_authenticated_header = yes
+
+#smtpd_sender_login_maps = proxy:mysql:/etc/postfix/mysql-login_maps_dovecot.cf
+#smtpd_sasl_auth_enable = no
+#smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated reject_unauth_destination
+#smtpd_restriction_classes = submission_recipient_checks, submission_sender_checks
+#submission_recipient_checks = reject_unknown_recipient_domain,permit_sasl_authenticated,reject_unauth_destination
+#submission_sender_checks = reject_sender_login_mismatch
+#submission_client_checks = permit_sasl_authenticated,reject_unauth_destination

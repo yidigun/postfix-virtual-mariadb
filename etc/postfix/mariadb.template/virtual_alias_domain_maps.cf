@@ -1,0 +1,16 @@
+# /etc/postfix/mariadb/mysql_virtual_alias_domain_maps.cf
+#  for virtual mail server
+# generated from /etc/postfix/mariadb.template/mysql_virtual_alias_domain_maps.cf
+
+user     = ::POSTFIX_MARIADB_USERNAME::
+password = ::POSTFIX_MARIADB_PASSWORD::
+hosts    = ::POSTFIX_MARIADB_HOST::
+dbname   = ::POSTFIX_MARIADB_DATABASE::
+
+query    = SELECT A.goto
+             FROM alias AS A,
+                  alias_domain AS D
+            WHERE D.alias_domain = '%d'
+              AND A.address = CONCAT('%u', '@', D.target_domain)
+              AND A.active = '1'
+              AND D.active = '1'

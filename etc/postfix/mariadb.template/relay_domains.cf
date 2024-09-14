@@ -1,0 +1,14 @@
+# /etc/postfix/mariadb/relay_domains.cf
+#  for virtual mail server
+#  generated from /etc/postfix/mariadb.template/relay_domains.cf
+
+user     = ::POSTFIX_MARIADB_USERNAME::
+password = ::POSTFIX_MARIADB_PASSWORD::
+hosts    = ::POSTFIX_MARIADB_HOST::
+dbname   = ::POSTFIX_MARIADB_DATABASE::
+
+query    = SELECT domain
+             FROM domain
+            WHERE domain = '%s'
+              AND active = '1'
+              AND (transport LIKE 'smtp%%' OR transport LIKE 'relay%%')

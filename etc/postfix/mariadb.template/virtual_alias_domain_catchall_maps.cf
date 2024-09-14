@@ -1,0 +1,17 @@
+# /etc/postfix/mariadb/virtual_alias_domain_catchall_maps.cf
+#  for virtual mail server
+#  generated from /etc/postfix/mariadb.template/virtual_alias_domain_catchall_maps.cf
+
+user     = ::POSTFIX_MARIADB_USERNAME::
+password = ::POSTFIX_MARIADB_PASSWORD::
+hosts    = ::POSTFIX_MARIADB_HOST::
+dbname   = ::POSTFIX_MARIADB_DATABASE::
+
+# handles catch-all settings of target-domain
+query    = SELECT A.goto
+             FROM alias AS A,
+                  alias_domain AS D
+            WHERE D.alias_domain = '%d'
+              AND A.address = CONCAT('@', D.target_domain)
+              AND A.active = '1'
+              AND D.active = '1'
