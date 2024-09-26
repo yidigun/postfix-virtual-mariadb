@@ -5,7 +5,7 @@ ENV IMG_TAG=$IMG_TAG
 
 RUN apt-get -y update && \
     DEBIAN_FRONTEND=noninteractive \
-        apt-get -y install postfix postfix-mysql && \
+        apt-get -y install postfix postfix-mysql ipcalc && \
     apt-get clean && \
     mkdir -p /etc/postfix/mariadb
 

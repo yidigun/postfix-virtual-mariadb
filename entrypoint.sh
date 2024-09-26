@@ -1,7 +1,9 @@
 #!/bin/sh
 
 # config vars
+echo POSTFIX_START_OPTS: $POSTFIX_START_OPTS
 echo POSTFIX_USE_SUBMISSION: ${POSTFIX_USE_SUBMISSION:=no}
+echo POSTFIX_RELAYHOST: $POSTFIX_RELAYHOST
 echo POSTFIX_TLS_FULLCHAIN: $POSTFIX_TLS_FULLCHAIN
 echo POSTFIX_TLS_KEYFILE: $POSTFIX_TLS_KEYFILE
 
@@ -20,15 +22,17 @@ echo $POSTFIX_MAILNAME >/etc/mailname
 echo POSTFIX_MYORIGIN: ${POSTFIX_MYORIGIN:=`cat /etc/mailname`}
 
 echo POSTFIX_MYNETWORKS: $POSTFIX_MYNETWORKS
-POSTFIX_LOCALNET=$(ipcalc `ip addr show scope global | grep inet | awk '{ print $2 }'` | \
+POSTFIX_LOCALNET=$(LANG=C ipcalc `ip addr show scope global | grep inet | awk '{ print $2 }'` | \
                         grep -i network | awk '{ print $2 }')
 echo POSTFIX_LOCALNET: $POSTFIX_LOCALNET
 echo POSTFIX_MYORIGIN: ${POSTFIX_MYORIGIN:=`cat /etc/mailname`}
+
 
 # create edit commands
 sedscript=/etc/postfix/mariadb.template/sedscript.sed
 vars="POSTFIX_TLS_FULLCHAIN \
       POSTFIX_TLS_KEYFILE \
+      POSTFIX_RELAYHOST \
       POSTFIX_MARIADB_USERNAME \
       POSTFIX_MARIADB_PASSWORD \
       POSTFIX_MARIADB_HOST \
@@ -43,8 +47,8 @@ vars="POSTFIX_TLS_FULLCHAIN \
 cat /dev/null >$sedscript
 for var in $vars; do
   # escape variables
-  eval "$var=\"$(eval "echo \$$var | sed -e 's|/|\\\\/|g'")\""
-  eval "echo \"s/::$var::/\$$var/g\"" >>$sedscript
+  val=$(eval "echo \$$var | sed -e 's|/|\\\\/|g'")
+  echo "s/::$var::/$val/g" >>$sedscript
 done
 
 
@@ -57,35 +61,38 @@ configs="relay_domains \
          virtual_alias_maps \
          virtual_domains_maps \
          virtual_mailbox_maps"
-
 echo Create /etc/postfix/main.cf ...
 sed -f $sedscript /etc/postfix/mariadb.template/main.cf \
         >/etc/postfix/main.cf
 
 # enable tls support
-if [ -f "$POSTFIX_TLS_FULLCHAIN" -a -f $POSTFIX_TLS_KEYFILE ]; then
-  echo Add submission config to /etc/postfix/master.cf ...
+if [ -f "$POSTFIX_TLS_FULLCHAIN" -a -f "$POSTFIX_TLS_KEYFILE" ]; then
+  echo Add tls support to /etc/postfix/main.cf ...
   sed -f $sedscript /etc/postfix/mariadb.template/main.cf.tls \
           >>/etc/postfix/main.cf
 fi
 
 # enable submission port (587/tcp)
 if [ `echo $POSTFIX_USE_SUBMISSION | tr '[:upper:]' '[:lower:]'` = "yes" ]; then
-  echo Add submission config to /etc/postfix/master.cf ...
+  echo Add submission support to /etc/postfix/master.cf ...
   sed -f $sedscript /etc/postfix/mariadb.template/master.cf.submission \
           >>/etc/postfix/master.cf
 fi
+
+# create mariadb configs
 for config in $configs; do
   echo Create config to /etc/postfix/mariadb/$config.cf ...
   sed -f $sedscript /etc/postfix/mariadb.template/$config.cf \
         >/etc/postfix/mariadb/$config.cf
 done
 
+
 # Prepare chroot env
-etcfiles="localtime services resolv.conf hosts nsswitch.conf nss_mdns.config"
+mkdir -p /var/spool/postfix/etc &&
 (cd /var/spool/postfix/etc; \
-for f in $etcfiles; do \
+for f in localtime services resolv.conf hosts nsswitch.conf; do \
   if [ ! -f $f ]; then \
+    echo Copy /etc/$f to /var/spool/postfix/etc/$f ...
     cp /etc/$f $f; \
   fi; \
 done)
@@ -97,12 +104,16 @@ case $CMD in
     exec postfix $POSTFIX_START_OPTS start-fg
     ;;
 
+  flush|reload|status)
+    exec postfix -v $CMD
+    ;;
+
   sh|bash|/bin/sh|/bin/bash|/usr/bin/bash)
     exec /bin/bash "$@"
     ;;
 
   *)
-    echo usage: "$0 { start [ args ... ] | sh [ args ... ] }"
+    echo usage: "$0 { start | flush | reload | status | sh | bash }"
     ;;
 
 esac
